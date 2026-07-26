@@ -1,4 +1,4 @@
-const API = "backend-theo3535s-projects.vercel.app";
+const API = "backend-pi-six-28.vercel.app";
 
 const connectBtn = document.getElementById("connectBtn");
 const transferBtn = document.getElementById("transferBtn");
