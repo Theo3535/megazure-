@@ -3,165 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mega to OneDrive</title>
-  <style>
-    :root{--bg:#f6f5f0;--card:#fff;--text:#1e1c18;--muted:#6d6961;--line:#ddd7cd;--primary:#0a6b73;--ok:#2f7d18;--err:#a12c3d;--shadow:0 10px 30px rgba(0,0,0,.08)}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text)}
-    .wrap{max-width:720px;margin:0 auto;padding:18px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;margin:14px 0}
-    h1{font-size:32px;line-height:1.05;margin:0 0 8px}
-    p{color:var(--muted);line-height:1.5}
-    label{display:block;font-weight:700;margin:14px 0 8px}
-    input,textarea{width:100%;padding:16px;border:1px solid var(--line);border-radius:14px;font:inherit;font-size:16px}
-    button{padding:16px 18px;border:0;border-radius:14px;background:var(--primary);color:#fff;font-weight:700;font-size:16px;cursor:pointer}
-    button.secondary{background:#efece5;color:var(--text);border:1px solid var(--line)}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .status{font-weight:700}
-    .muted{color:var(--muted)}
-    .ok{color:var(--ok)}
-    .err{color:var(--err)}
-    .pill{display:inline-block;padding:8px 12px;border-radius:999px;background:#d7ecec;color:var(--primary);font-weight:700;font-size:12px}
-    pre{white-space:pre-wrap;word-break:break-word;background:#f5f3ee;padding:14px;border-radius:12px;min-height:90px}
-    .big{font-size:28px;font-weight:800;letter-spacing:2px}
-    a{color:var(--primary)}
-  </style>
+  <title>MEGA vers OneDrive</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <span class="pill">Simple et gratuit</span>
+  <main class="wrap">
+    <section class="card">
       <h1>MEGA vers OneDrive</h1>
-      <p>1. Connecte-toi à Microsoft. 2. Colle ton lien MEGA. 3. Lance le transfert.</p>
-    </div>
+      <p>Connecte Microsoft, colle ton lien MEGA, puis lance le transfert.</p>
+    </section>
 
-    <div class="card">
-      <div class="row">
-        <button id="connect">Se connecter à OneDrive</button>
-        <span id="oauthState" class="status muted">Non connecté</span>
+    <section class="card">
+      <button id="connectBtn">Se connecter à Microsoft</button>
+      <div id="authStatus" class="status">Non connecté</div>
+
+      <div id="deviceBox" class="hidden">
+        <p>Va sur le lien et entre le code :</p>
+        <div id="userCode" class="code">-</div>
+        <a id="verifyLink" href="#" target="_blank" rel="noopener noreferrer">Ouvrir Microsoft</a>
       </div>
 
-      <div id="deviceBox" style="display:none;margin-top:16px">
-        <p>Ouvre ce lien et entre le code :</p>
-        <div class="big" id="userCode">-</div>
-        <p class="muted" id="deviceMessage"></p>
-        <p><a id="verifyLink" href="#" target="_blank" rel="noopener noreferrer">Ouvrir Microsoft</a></p>
-      </div>
+      <input id="megaLink" type="text" placeholder="Lien MEGA">
+      <input id="folder" type="text" value="/MEGA Imports" placeholder="Dossier OneDrive">
+      <button id="transferBtn">Lancer le transfert</button>
+      <div id="transferStatus" class="status">En attente</div>
+    </section>
 
-      <label for="sid">Session Microsoft</label>
-      <input id="sid" placeholder="Se remplit automatiquement après connexion">
-
-      <label for="mega">Lien MEGA</label>
-      <textarea id="mega" rows="4" placeholder="https://mega.nz/file/...#clé"></textarea>
-
-      <label for="parent">Dossier OneDrive</label>
-      <input id="parent" value="/MEGA Imports">
-
-      <div class="row" style="margin-top:16px">
-        <button id="go">Transférer</button>
-        <span id="transferState" class="status muted">En attente</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <strong>Journal</strong>
-      <pre id="result">Aucune action pour le moment.</pre>
-    </div>
-  </div>
-
-<script>
-const sidEl=document.getElementById('sid');
-const oauthState=document.getElementById('oauthState');
-const transferState=document.getElementById('transferState');
-const resultEl=document.getElementById('result');
-const deviceBox=document.getElementById('deviceBox');
-const verifyLink=document.getElementById('verifyLink');
-const userCode=document.getElementById('userCode');
-const deviceMessage=document.getElementById('deviceMessage');
-let authPollTimer=null;
-let jobPollTimer=null;
-
-async function connect(){
-  const res=await fetch('/auth/azure/device/start',{method:'POST'});
-  const data=await res.json();
-  if(!res.ok){
-    oauthState.textContent='Erreur de configuration';
-    oauthState.className='status err';
-    resultEl.textContent=JSON.stringify(data,null,2);
-    return;
-  }
-  deviceBox.style.display='block';
-  verifyLink.href=data.verification_uri_complete || data.verification_uri;
-  verifyLink.textContent='Ouvrir Microsoft';
-  userCode.textContent=data.user_code;
-  deviceMessage.textContent=data.message || '';
-  oauthState.textContent='Connexion en attente...';
-  oauthState.className='status muted';
-  clearInterval(authPollTimer);
-  authPollTimer=setInterval(async()=>{
-    const r=await fetch('/auth/azure/device/poll/'+data.flowId);
-    const d=await r.json();
-    if(d.done && d.sid){
-      sidEl.value=d.sid;
-      oauthState.textContent='Connecté';
-      oauthState.className='status ok';
-      resultEl.textContent='Connexion réussie. Tu peux lancer le transfert.';
-      clearInterval(authPollTimer);
-    }else if(d.error){
-      oauthState.textContent='Échec';
-      oauthState.className='status err';
-      resultEl.textContent=JSON.stringify(d,null,2);
-      clearInterval(authPollTimer);
-    }
-  },5000);
-}
-
-async function transfer(){
-  const sid=sidEl.value.trim();
-  const megaLink=document.getElementById('mega').value.trim();
-  const parentPath=document.getElementById('parent').value.trim()||'/MEGA Imports';
-  if(!sid||!megaLink){
-    transferState.textContent='Session et lien requis';
-    transferState.className='status err';
-    return;
-  }
-  transferState.textContent='Démarrage...';
-  transferState.className='status muted';
-  resultEl.textContent='';
-  const res=await fetch('/api/transfer',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+sid},
-    body:JSON.stringify({megaLink,parentPath})
-  });
-  const data=await res.json();
-  if(!res.ok){
-    transferState.textContent='Erreur';
-    transferState.className='status err';
-    resultEl.textContent=JSON.stringify(data,null,2);
-    return;
-  }
-  clearInterval(jobPollTimer);
-  jobPollTimer=setInterval(async()=>{
-    const r=await fetch('/api/job/'+data.jobId);
-    const d=await r.json();
-    resultEl.textContent=JSON.stringify(d,null,2);
-    if(d.status==='done'){
-      transferState.textContent='Terminé';
-      transferState.className='status ok';
-      clearInterval(jobPollTimer);
-    }else if(d.status==='error'){
-      transferState.textContent='Échec';
-      transferState.className='status err';
-      clearInterval(jobPollTimer);
-    }else{
-      transferState.textContent='Transfert en cours';
-      transferState.className='status muted';
-    }
-  },1500);
-}
-
-document.getElementById('connect').addEventListener('click',connect);
-document.getElementById('go').addEventListener('click',transfer);
-</script>
+    <section class="card">
+      <h2>Résultat</h2>
+      <pre id="log">Aucune action pour le moment.</pre>
+    </section>
+  </main>
+  <script src="app.js"></script>
 </body>
 </html>
