@@ -1,4 +1,4 @@
-const API = "backend-kappa-one-27.vercel.app";
+const API = "backend-theo3535s-projects.vercel.app";
 
 const connectBtn = document.getElementById("connectBtn");
 const transferBtn = document.getElementById("transferBtn");
