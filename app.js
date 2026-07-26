@@ -1,4 +1,4 @@
-const API = "https://YOUR-BACKEND-URL.onrender.com";
+const API = "https://ton-backend.vercel.app";
 
 const connectBtn = document.getElementById("connectBtn");
 const transferBtn = document.getElementById("transferBtn");
