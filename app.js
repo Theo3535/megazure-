@@ -58,4 +58,61 @@ connectBtn.onclick = async () => {
           log.textContent = d.error;
           clearInterval(authTimer);
         } else if (d.message) {
-          log.textContent = d.mess
+          log.textContent = d.message;
+        }
+      } catch (e) {
+        authStatus.textContent = "Erreur réseau";
+        log.textContent = e.message;
+        clearInterval(authTimer);
+      }
+    }, 2500);
+  } catch (e) {
+    authStatus.textContent = "Erreur réseau";
+    log.textContent = e.message;
+  }
+};
+
+transferBtn.onclick = async () => {
+  if (!sid) {
+    transferStatus.textContent = "Connecte Microsoft d'abord";
+    return;
+  }
+
+  transferStatus.textContent = "Démarrage...";
+  log.textContent = "";
+
+  try {
+    const data = await api("/transfer", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sid}` },
+      body: JSON.stringify({
+        megaLink: megaLink.value.trim(),
+        parentPath: folder.value.trim() || "/MEGA Imports"
+      })
+    });
+
+    transferStatus.textContent = "Transfert en cours";
+    clearInterval(jobTimer);
+
+    jobTimer = setInterval(async () => {
+      try {
+        const d = await api(`/job/${data.jobId}`);
+        log.textContent = JSON.stringify(d, null, 2);
+        if (d.status === "done") {
+          transferStatus.textContent = "Terminé";
+          clearInterval(jobTimer);
+        } else if (d.status === "error") {
+          transferStatus.textContent = "Échec";
+          clearInterval(jobTimer);
+        }
+      } catch (e) {
+        transferStatus.textContent = "Erreur réseau";
+        log.textContent = e.message;
+        clearInterval(jobTimer);
+      }
+    }, 2000);
+  } catch (e) {
+    transferStatus.textContent = "Erreur";
+    log.textContent = e.message;
+  }
+};
