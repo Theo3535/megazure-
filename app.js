@@ -1,4 +1,4 @@
-const API = "https://backend-six-liart-28.vercel.app";
+const API = "https://backend-pi-six-28.vercel.app";
 
 const connectBtn = document.getElementById("connectBtn");
 const transferBtn = document.getElementById("transferBtn");
@@ -23,28 +23,23 @@ async function readJson(res) {
 connectBtn.onclick = async () => {
   authStatus.textContent = "Connexion...";
   log.textContent = "";
-
   try {
     const res = await fetch(`${API}/auth/start`, { method: "POST" });
     const data = await readJson(res);
-
     if (!res.ok) {
       authStatus.textContent = "Erreur";
       log.textContent = JSON.stringify(data, null, 2);
       return;
     }
-
     deviceBox.classList.remove("hidden");
     userCode.textContent = data.user_code || "-";
     verifyLink.href = data.verification_uri_complete || data.verification_uri || "#";
     authStatus.textContent = "En attente de validation...";
-
     clearInterval(authTimer);
     authTimer = setInterval(async () => {
       try {
         const r = await fetch(`${API}/auth/poll/${data.flowId}`);
         const d = await readJson(r);
-
         if (d.done && d.sid) {
           sid = d.sid;
           authStatus.textContent = "Connecté";
@@ -60,7 +55,7 @@ connectBtn.onclick = async () => {
         log.textContent = e.message;
         clearInterval(authTimer);
       }
-    }, 4000);
+    }, 2500);
   } catch (e) {
     authStatus.textContent = "Erreur réseau";
     log.textContent = e.message;
@@ -72,14 +67,8 @@ transferBtn.onclick = async () => {
     transferStatus.textContent = "Connecte Microsoft d'abord";
     return;
   }
-
-  const payload = {
-    megaLink: megaLink.value.trim(),
-    parentPath: folder.value.trim() || "/MEGA Imports"
-  };
-
   transferStatus.textContent = "Démarrage...";
-
+  log.textContent = "";
   try {
     const res = await fetch(`${API}/transfer`, {
       method: "POST",
@@ -87,26 +76,24 @@ transferBtn.onclick = async () => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${sid}`
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        megaLink: megaLink.value.trim(),
+        parentPath: folder.value.trim() || "/MEGA Imports"
+      })
     });
-
     const data = await readJson(res);
-
     if (!res.ok) {
       transferStatus.textContent = "Erreur";
       log.textContent = JSON.stringify(data, null, 2);
       return;
     }
-
     transferStatus.textContent = "Transfert en cours";
     clearInterval(jobTimer);
-
     jobTimer = setInterval(async () => {
       try {
         const r = await fetch(`${API}/job/${data.jobId}`);
         const d = await readJson(r);
         log.textContent = JSON.stringify(d, null, 2);
-
         if (d.status === "done") {
           transferStatus.textContent = "Terminé";
           clearInterval(jobTimer);
