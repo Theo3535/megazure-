@@ -17,11 +17,7 @@ let jobTimer = null;
 
 async function readJson(res) {
   const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
+  try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
 async function api(path, options = {}) {
@@ -40,6 +36,7 @@ async function api(path, options = {}) {
 connectBtn.onclick = async () => {
   authStatus.textContent = "Connexion...";
   log.textContent = "";
+
   try {
     const data = await api("/auth/start", { method: "POST", body: "{}" });
     deviceBox.classList.remove("hidden");
@@ -60,60 +57,5 @@ connectBtn.onclick = async () => {
           authStatus.textContent = "Échec";
           log.textContent = d.error;
           clearInterval(authTimer);
-        }
-      } catch (e) {
-        authStatus.textContent = "Erreur réseau";
-        log.textContent = e.message;
-        clearInterval(authTimer);
-      }
-    }, 2500);
-  } catch (e) {
-    authStatus.textContent = "Erreur réseau";
-    log.textContent = e.message;
-  }
-};
-
-transferBtn.onclick = async () => {
-  if (!sid) {
-    transferStatus.textContent = "Connecte Microsoft d'abord";
-    return;
-  }
-
-  transferStatus.textContent = "Démarrage...";
-  log.textContent = "";
-
-  try {
-    const data = await api("/transfer", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${sid}` },
-      body: JSON.stringify({
-        megaLink: megaLink.value.trim(),
-        parentPath: folder.value.trim() || "/MEGA Imports"
-      })
-    });
-
-    transferStatus.textContent = "Transfert en cours";
-    clearInterval(jobTimer);
-
-    jobTimer = setInterval(async () => {
-      try {
-        const d = await api(`/job/${data.jobId}`);
-        log.textContent = JSON.stringify(d, null, 2);
-        if (d.status === "done") {
-          transferStatus.textContent = "Terminé";
-          clearInterval(jobTimer);
-        } else if (d.status === "error") {
-          transferStatus.textContent = "Échec";
-          clearInterval(jobTimer);
-        }
-      } catch (e) {
-        transferStatus.textContent = "Erreur réseau";
-        log.textContent = e.message;
-        clearInterval(jobTimer);
-      }
-    }, 2000);
-  } catch (e) {
-    transferStatus.textContent = "Erreur";
-    log.textContent = e.message;
-  }
-};
+        } else if (d.message) {
+          log.textContent = d.mess
