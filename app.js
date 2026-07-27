@@ -17,29 +17,40 @@ let jobTimer = null;
 
 async function readJson(res) {
   const text = await res.text();
-  try { return JSON.parse(text); } catch { return { raw: text }; }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(`${API}${path}`, {
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {})
+    },
+    ...options
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
 }
 
 connectBtn.onclick = async () => {
   authStatus.textContent = "Connexion...";
   log.textContent = "";
   try {
-    const res = await fetch(`${API}/auth/start`, { method: "POST" });
-    const data = await readJson(res);
-    if (!res.ok) {
-      authStatus.textContent = "Erreur";
-      log.textContent = JSON.stringify(data, null, 2);
-      return;
-    }
+    const data = await api("/auth/start", { method: "POST", body: "{}" });
     deviceBox.classList.remove("hidden");
     userCode.textContent = data.user_code || "-";
     verifyLink.href = data.verification_uri_complete || data.verification_uri || "#";
     authStatus.textContent = "En attente de validation...";
+
     clearInterval(authTimer);
     authTimer = setInterval(async () => {
       try {
-        const r = await fetch(`${API}/auth/poll/${data.flowId}`);
-        const d = await readJson(r);
+        const d = await api(`/auth/poll/${data.flowId}`);
         if (d.done && d.sid) {
           sid = d.sid;
           authStatus.textContent = "Connecté";
@@ -47,7 +58,7 @@ connectBtn.onclick = async () => {
           clearInterval(authTimer);
         } else if (d.error) {
           authStatus.textContent = "Échec";
-          log.textContent = JSON.stringify(d, null, 2);
+          log.textContent = d.error;
           clearInterval(authTimer);
         }
       } catch (e) {
@@ -67,32 +78,26 @@ transferBtn.onclick = async () => {
     transferStatus.textContent = "Connecte Microsoft d'abord";
     return;
   }
+
   transferStatus.textContent = "Démarrage...";
   log.textContent = "";
+
   try {
-    const res = await fetch(`${API}/transfer`, {
+    const data = await api("/transfer", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${sid}`
-      },
+      headers: { Authorization: `Bearer ${sid}` },
       body: JSON.stringify({
         megaLink: megaLink.value.trim(),
         parentPath: folder.value.trim() || "/MEGA Imports"
       })
     });
-    const data = await readJson(res);
-    if (!res.ok) {
-      transferStatus.textContent = "Erreur";
-      log.textContent = JSON.stringify(data, null, 2);
-      return;
-    }
+
     transferStatus.textContent = "Transfert en cours";
     clearInterval(jobTimer);
+
     jobTimer = setInterval(async () => {
       try {
-        const r = await fetch(`${API}/job/${data.jobId}`);
-        const d = await readJson(r);
+        const d = await api(`/job/${data.jobId}`);
         log.textContent = JSON.stringify(d, null, 2);
         if (d.status === "done") {
           transferStatus.textContent = "Terminé";
@@ -108,7 +113,7 @@ transferBtn.onclick = async () => {
       }
     }, 2000);
   } catch (e) {
-    transferStatus.textContent = "Erreur réseau";
+    transferStatus.textContent = "Erreur";
     log.textContent = e.message;
   }
 };
